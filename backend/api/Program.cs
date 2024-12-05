@@ -76,6 +76,7 @@ async Task SeedDefaultUserAsync(IServiceProvider services)
     var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
 
     const string defaultUserName = "desafio";
+    const string defaultEmail = "desafio@desafio.com";
     const string defaultPassword = "desafio123";
 
     if (await userManager.FindByEmailAsync(defaultUserName) == null)
@@ -83,7 +84,7 @@ async Task SeedDefaultUserAsync(IServiceProvider services)
         var defaultUser = new IdentityUser
         {
             UserName = defaultUserName,
-            Email = defaultUserName,
+            Email = defaultEmail,
             EmailConfirmed = true
         };
 
