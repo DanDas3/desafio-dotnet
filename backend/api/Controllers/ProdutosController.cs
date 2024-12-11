@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using api.Data;
+using api.DTO;
 using api.Model;
+using AutoMapper;
 
 namespace api.Controllers
 {
@@ -15,16 +17,18 @@ namespace api.Controllers
     public class ProdutosController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper;
 
-        public ProdutosController(ApplicationDbContext context)
+        public ProdutosController(ApplicationDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         [HttpGet]
         public async Task<IActionResult> List()
         {
-            var list = await _context.Produtos.ToListAsync();
+            var list = await _context.Produtos.Include(p => p.Categoria).ToListAsync();
             if (list == null)
             {
                 return NotFound();
@@ -53,36 +57,55 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Produto produto)
+        public async Task<IActionResult> Create([FromBody] ProdutoDTO produto)
         {
             if (produto == null)
             {
                 return BadRequest();
             }
-
-            _context.Produtos.Add(produto);
+            var produtoEntity = _mapper.Map<Produto>(produto);
+            _context.Produtos.Add(produtoEntity);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(Details), new { id = produto.Id }, produto);
-            
+            return CreatedAtAction(nameof(Details), new { id = produtoEntity.Id }, produto);
+
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProduct(int id, [FromBody] Produto produto)
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProdutoDTO produto)
         {
-            if (id != produto.Id)
-                return BadRequest("Product ID mismatch");
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var produtoExistente = await _context.Produtos.FindAsync(id);
+                    if (produtoExistente == null)
+                    {
+                        return NotFound();
+                    }
 
-            var p = await _context.Produtos
-                .Include(p => p.Categoria)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            p = produto;
+                    _mapper.Map(produto, produtoExistente);
 
-            _context.Produtos.Update(p);
-            var updatedProduct = await _context.SaveChangesAsync();
-            if (updatedProduct == null)
-                return NotFound($"Product with ID {id} not found");
-
-            return Ok(updatedProduct);
+                    _context.Produtos.Update(produtoExistente);
+                    await _context.SaveChangesAsync();
+                    return Ok(produtoExistente);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    if (!ProdutoExists(id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        return (BadRequest());
+                    }
+                }
+            }
+            else
+            {
+                return BadRequest(ModelState);
+            }
         }
 
         // DELETE: api/Products/{id}
