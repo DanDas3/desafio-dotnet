@@ -1,9 +1,15 @@
-import { Table, Button, Space } from 'antd';
-import { useGetCategoriesQuery } from '../../redux/categorias';
+import { Table, Button, Space, Card, message } from 'antd';
+import { useDeleteCategoryByIdMutation, useGetCategoriesQuery } from '../../redux/categorias';
 import { useNavigate } from 'react-router-dom';
-
+import { useEffect, useState } from 'react';
+import { formatIdRoute, RoutesPath } from '../../utils/constants';
+import ConfirmationModal from '../../components/Modal/ConfirmationModal';
+import { FileAddTwoTone } from '@ant-design/icons';
 const CategoriasPage = () => {
-  const { data, error, isLoading } = useGetCategoriesQuery({});
+  const { data, error, isLoading, refetch } = useGetCategoriesQuery({});
+  const [openModal, setOpenModal] = useState<boolean>(false);
+  const [deleteCategoryById] = useDeleteCategoryByIdMutation();
+  const [idDelete, setIdDelete] = useState<number>(0);
   const navigate = useNavigate();
 
   const columns = [
@@ -21,13 +27,35 @@ const CategoriasPage = () => {
       title: 'Ações',
       key: 'actions',
       render: (record: { id: number }) => (
-        <Space size="middle">
-          <Button type="default" onClick={() => navigate(`/categorias/${record.id}`)} >Editar</Button>
-          <Button danger>Excluir</Button>
+        <Space size="middle" style={{width:10}}>
+          <Button type="default" onClick={() => navigate(formatIdRoute(RoutesPath.EDITAR_CATEGORIAS,record.id))} >Editar</Button>
+          <Button danger onClick={() => {
+            setOpenModal(true)
+            setIdDelete(record.id);
+          }}>Excluir</Button>
         </Space>
       ),
     },
   ];
+
+  const deleteProcess = async (id: number) => {
+    try {
+      const response = await deleteCategoryById(id);
+      if(response.error) {
+        throw response.error;
+      }
+      message.success('Excluído com sucesso!');
+      refetch();
+    } catch (error) {
+      message.error('Erro ao excluir!');
+      console.error(error)
+    }
+    setOpenModal(false);
+  }
+
+  useEffect(() => {
+    refetch();
+  }, [refetch])
 
   if (isLoading) {
     return <div>Carregando...</div>;
@@ -38,10 +66,19 @@ const CategoriasPage = () => {
   }
 
   return (
-    <div>
-      <h2>Lista de Categorias</h2>
-      <Table columns={columns} dataSource={data} rowKey="id" bordered={true}/>
-    </div>
+    <>
+      <ConfirmationModal 
+      handleOk={()=>deleteProcess(idDelete)}
+      title='Deseja excluir esta categoria?'
+      open={openModal}
+      setOpen={setOpenModal} /> 
+      <Card title={"Lista de Categorias"} style={{width:"100%"}}>
+        <div style={{display:'flex', justifyContent:'end', paddingBottom:5}}>
+          <Button icon={<FileAddTwoTone />} onClick={() => navigate(RoutesPath.REGISTRAR_CATEGORIAS) }>Novo</Button>
+        </div>
+        <Table columns={columns} dataSource={data} rowKey="id" bordered={true}/>
+      </Card>
+    </>
   );
 };
 
