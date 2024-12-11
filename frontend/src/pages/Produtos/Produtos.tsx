@@ -1,9 +1,17 @@
-import { Table, Button, Space } from 'antd';
-import { useGetProductsQuery } from '../../redux/produtos';
+import { Table, Button, Space, Card, message } from 'antd';
+import { useDeleteProductByIdMutation, useGetProductsQuery } from '../../redux/produtos';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { formatIdRoute, RoutesPath } from '../../utils/constants';
+import { CategoriaDTO } from '../../dto/categoriaDTO';
+import { FileAddTwoTone } from '@ant-design/icons';
+import ConfirmationModal from '../../components/Modal/ConfirmationModal';
 
 const ProductsPage = () => {
-  const { data, error, isLoading } = useGetProductsQuery({});
+  const { data, error, isLoading, refetch } = useGetProductsQuery({});
+  const [openModal, setOpenModal] = useState<boolean>(false);
+  const [deleteProductById] = useDeleteProductByIdMutation();
+  const [idDelete, setIdDelete] = useState<number>(0);
   const navigate = useNavigate();
 
   const columns = [
@@ -26,19 +34,41 @@ const ProductsPage = () => {
       title: 'Categoria',
       dataIndex: 'categoria',
       key: 'categoria',
-      render: (category: { name: string }) => category?.name,
+      render: (categoria: CategoriaDTO) => categoria?.nome,
     },
     {
       title: 'Ações',
       key: 'actions',
-      render: (record:any) => (
-        <Space size="middle">
-          <Button type="default" onClick={() => navigate(`/produtos/${record.id}`)}>Editar</Button>
-          <Button danger>Excluir</Button>
+      render: (record: {id: number}) => (
+        <Space size="middle" style={{width:70}}>
+          <Button type="default" onClick={() => navigate(formatIdRoute(RoutesPath.EDITAR_PRODUTOS,record.id))}>Editar</Button>
+          <Button danger onClick={() => {
+            setOpenModal(true)
+            setIdDelete(record.id);
+          }}>Excluir</Button>
         </Space>
       ),
     },
   ];
+
+  const deleteProcess = async (id: number) => {
+    try {
+      const response = await deleteProductById(id);
+      if(response.error) {
+        throw response.error;
+      }
+      message.success('Excluído com sucesso!');
+      refetch();
+    } catch (error) {
+      message.error('Erro ao excluir!');
+      console.error(error)
+    }
+    setOpenModal(false);
+  }
+
+  useEffect(() => {
+    refetch();
+  },[refetch])
 
   if (isLoading) {
     return <div>Carregando...</div>;
@@ -49,10 +79,19 @@ const ProductsPage = () => {
   }
 
   return (
-    <div>
-      <h2>Lista de Produtos</h2>
-      <Table columns={columns} dataSource={data} rowKey="id" />
-    </div>
+    <>
+      <ConfirmationModal 
+      handleOk={()=>deleteProcess(idDelete)}
+      title='Deseja excluir este produto?'
+      open={openModal}
+      setOpen={setOpenModal} />
+      <Card title='Lista de Produtos' style={{width:"100%"}}>
+        <div style={{display:'flex', justifyContent:'end', paddingBottom:5}}>
+          <Button icon={<FileAddTwoTone />} onClick={() => navigate(RoutesPath.REGISTRAR_PRODUTOS) }>Novo</Button>
+        </div>
+        <Table columns={columns} dataSource={data} rowKey="id" pagination={{defaultCurrent:4,}} bordered={true}/>
+      </Card>
+    </>
   );
 };
 
