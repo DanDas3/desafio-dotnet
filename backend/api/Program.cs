@@ -7,10 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-var conString = builder.Configuration.GetConnectionString("default") ??
-     throw new InvalidOperationException("Connection string 'default' not found.");
-
-Console.WriteLine( conString);
+var conString = builder.Environment.IsDevelopment() ? builder.Configuration.GetConnectionString("DevelopmentConnection") : builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine("connection string: " + conString);
 builder.Services.AddControllers()
  .AddJsonOptions(options =>
  {
@@ -21,6 +19,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(conString));
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddIdentityCore<IdentityUser>(options => {
     options.SignIn.RequireConfirmedAccount = false;
     options.User.RequireUniqueEmail = true;
@@ -49,12 +48,17 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+Console.WriteLine( "#### Informacoes do ambiente: " + app.Environment.ToString());
+Console.WriteLine( "#### Development: " + app.Environment.IsDevelopment());
 
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
     await SeedDefaultUserAsync(services);
 }
+
 
 if (app.Environment.IsDevelopment())
 {
