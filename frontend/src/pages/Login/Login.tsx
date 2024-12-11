@@ -1,28 +1,26 @@
-import { Button, Card, Form, Input, message, Typography } from "antd";
+import { Button, Card, Form, Input, Typography } from "antd";
 
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { useNavigate } from "react-router-dom";
-import { useLoginMutation } from "../../Auth/Auth";
-import { RoutesPath } from "../../utils/constants";
+import { useContext } from "react";
+import { AuthContext } from "../../context/authContext";
 const { Title } = Typography;
 
 const Login = () => {
-  const [login, { isLoading }] = useLoginMutation();
-  const navigate = useNavigate();
+  const { makeLogin } = useContext(AuthContext);
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  const onFinish = async (values: { userName: string; password: string }) => {
+
     try {
-      const { token } = await login(values).unwrap();
-      localStorage.setItem('authToken', token);
-      message.success('Login bem-sucedido!');
-      navigate(RoutesPath.CATEGORIAS);
+      await makeLogin(values.userName, values.password);
     } catch (error) {
-      message.error('Credenciais inválidas.');
+      console.error(error);
     }
+
+
   };
 
   return(
-    <div
+    <div style={{display:"flex", justifyContent:'center'}}
     >
       <Card
         style={{ width: 350 }}
@@ -63,7 +61,6 @@ const Login = () => {
               type="primary"
               htmlType="submit"
               style={{ width: '100%' }}
-              loading={isLoading}
             >
               Entrar
             </Button>
