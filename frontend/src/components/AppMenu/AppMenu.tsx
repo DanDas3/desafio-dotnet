@@ -1,90 +1,55 @@
-import { Menu, MenuProps } from "antd";
-import { AppstoreOutlined, MailOutlined, SettingOutlined } from '@ant-design/icons';
-
+import { Layout, Menu, MenuProps, theme } from "antd";
+import { useNavigate } from "react-router-dom";
+import Sider from "antd/es/layout/Sider";
+import { useContext } from "react";
+import { UtilsContext } from "../../context/utilsContext";
+import { AuthContext } from "../../context/authContext";
+import { UserOutlined } from '@ant-design/icons';
+import { PropsChildrenComponent } from "../../types/types";
 type MenuItem = Required<MenuProps>['items'][number];
 
-const items: MenuItem[] = [
-  {
-    key: 'sub1',
-    label: 'Navigation One',
-    icon: <MailOutlined />,
-    children: [
-      {
-        key: 'g1',
-        label: 'Item 1',
-        type: 'group',
-        children: [
-          { key: '1', label: 'Option 1' },
-          { key: '2', label: 'Option 2' },
-        ],
-      },
-      {
-        key: 'g2',
-        label: 'Item 2',
-        type: 'group',
-        children: [
-          { key: '3', label: 'Option 3' },
-          { key: '4', label: 'Option 4' },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'sub2',
-    label: 'Navigation Two',
-    icon: <AppstoreOutlined />,
-    children: [
-      { key: '5', label: 'Option 5' },
-      { key: '6', label: 'Option 6' },
-      {
-        key: 'sub3',
-        label: 'Submenu',
-        children: [
-          { key: '7', label: 'Option 7' },
-          { key: '8', label: 'Option 8' },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'divider',
-  },
-  {
-    key: 'sub4',
-    label: 'Navigation Three',
-    icon: <SettingOutlined />,
-    children: [
-      { key: '9', label: 'Option 9' },
-      { key: '10', label: 'Option 10' },
-      { key: '11', label: 'Option 11' },
-      { key: '12', label: 'Option 12' },
-    ],
-  },
-  {
-    key: 'grp',
-    label: 'Group',
-    type: 'group',
-    children: [
-      { key: '13', label: 'Option 13' },
-      { key: '14', label: 'Option 14' },
-    ],
-  },
-];
 
-const AppMenu = () => {
+const AppMenu = ({ children }: PropsChildrenComponent) => {
+  const { drawerStatus } = useContext(UtilsContext);
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const items: MenuItem[] = [
+    { key: 'categorias', label: 'Categoria' },
+    { type: 'divider' },
+    { key: 'produtos', label: 'Produto' },
+  ];
+  const menuHorizontalItem: MenuItem[] = [
+    {key: 'logout', icon:<UserOutlined />, label:'Sair', onClick: () => { logout() }}
+  ]
   const onClick: MenuProps['onClick'] = (e) => {
-    console.log('click ', e);
+    navigate(`/${e.key}`);
   };
 
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
+
   return (
-    <Menu
-      onClick={onClick}
-      style={{ width: 256 }}
-      defaultSelectedKeys={['1']}
-      defaultOpenKeys={['sub1']}
-      mode="inline"
-      items={items}
-    />
+    <>
+      <Menu style={{justifyContent:"end"}} items={menuHorizontalItem} mode="horizontal"></Menu>
+      {(drawerStatus && localStorage.getItem('authToken')) ? (
+        <Layout>
+          <Sider style={{ background: colorBgContainer }} width={255}>
+            <Menu
+              onClick={onClick}
+              style={{ width: 256 }}
+              defaultSelectedKeys={['category']}
+              mode="inline"
+              items={items}
+            />
+          </Sider>
+          <Layout.Content>{children}</Layout.Content>
+        </Layout>
+      ) : (
+        children
+      )}
+    </>
   );
 };
 
