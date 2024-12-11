@@ -3,6 +3,18 @@
 - Criar frontend em React
 - Criar backend C# com EntityFrameworkCore usando autenticação com ASP .NET Core Identity
 
+# Execução
+A partir do diretório raiz do repositório
+
+## Execução com docker
+no terminal:
+
+docker-compose up --build
+
+O frontend estará disponível na url:
+
+[http://localhost:3000/produtos](http://localhost:3000)
+
 ## Execução o backend
 
 no terminal:
