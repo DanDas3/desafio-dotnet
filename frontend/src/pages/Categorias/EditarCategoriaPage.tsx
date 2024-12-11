@@ -1,23 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { Form, Input, Button, Table, Checkbox } from 'antd';
-import { useGetCategoryByIdQuery, useUpdateCategoryMutation } from '../../redux/categorias';
-import { useGetProductsQuery } from '../../redux/produtos';
+import { useEffect } from 'react';
+import { Form, Input, Button, Table, Card, Space, message } from 'antd';
+import { useCreateCategoryMutation,  useGetCategoryByIdQuery,  useUpdateCategoryMutation } from '../../redux/categorias';
 import { CategoriaDTO } from '../../dto/categoriaDTO';
 import '../../style.css';
 
 const EditarCategoriaPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { data: category, isLoading: isLoadingCategory } = useGetCategoryByIdQuery(Number(id));
-  const { data: products } = useGetProductsQuery({});
+  const {data:category,refetch} = useGetCategoryByIdQuery(Number(id),{skip:!id})
   const [updateCategory] = useUpdateCategoryMutation();
+  const [createCategory] = useCreateCategoryMutation();
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const [formState, setFormState] = useState<CategoriaDTO>({
-    id: Number(id),
-    nome: '',
-    produtos: [], 
-  });
 
   const columns = [
     {
@@ -29,18 +23,18 @@ const EditarCategoriaPage = () => {
       title: 'Nome',
       dataIndex: 'nome',
       key: 'nome',
-    },
-    {
-      title: 'Selecionar',
-      key: 'select',
-      render: (_: any, record: any) => (
-        <Checkbox
-          checked={formState.produtos.includes(record.id)}
-          onChange={(e) => handleCheckboxChange(record.id, e.target.checked)}
-        />
-      ),
+    },{
+      title:'Preço',
+      dataIndex:'preco',
+      key:'preco'
     },
   ];
+
+  useEffect(() => {
+    if(id) {
+      refetch()
+    }
+  },[id, refetch])
 
   useEffect(() => {
     if (category) {
@@ -48,50 +42,51 @@ const EditarCategoriaPage = () => {
     }
   }, [category, form]);
 
-  const handleFormChange = (changedValues: Partial<CategoriaDTO>) => {
-    setFormState((prev) => ({ ...prev, ...changedValues }));
+  const handleFinish = async (values: CategoriaDTO) => {
+    try {
+      if(id) {
+        const response = await updateCategory({ id: Number(id), ...values });
+        if(response.error) {
+          throw response.error
+        }
+        message.success('Atualizado com sucesso!');
+      } else {
+        const response = await createCategory(values);
+        if(response.error) {
+          throw response.error;
+        }
+        message.success('Cadastrado com sucesso!');
+      }
+      navigate('/categorias');      
+    } catch (error) {
+      console.error(error)
+    }
   };
-
-  const handleCheckboxChange = (productId: number, checked: boolean) => {
-    setFormState((prev) => {
-      const produtos = checked
-        ? [...prev.produtos, productId]
-        : prev.produtos.filter((id) => id !== productId); 
-      return { ...prev, produtos };
-    });
-  };
-
-  const handleFinish = async (values: any) => {
-    await updateCategory({ id: Number(id), ...values });
-    navigate('/categorias');
-  };
-
-  if (isLoadingCategory) return <div>Carregando...</div>;
 
   return (
-    <div>
-      
-      <h2><Button className='botao-voltar' onClick={() => {navigate('/categorias')}}>{"<"}</Button>Editar Categoria</h2>
+    <Card title="Editar Categoria" style={{width:"100%"}}>
       <Form form={form} 
-        onFinish={handleFinish}
-        onValuesChange={(changedValues) => handleFormChange(changedValues)}>
+        onFinish={handleFinish}>
         <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit">
-            Salvar
-          </Button>
+        <Form.Item style={{display:'flex', justifyContent:'end'}}>
+          <Space size="middle">
+            <Button type='default' onClick={()=>navigate('/categorias')}>Voltar</Button>
+            <Button type="primary" htmlType="submit">
+              {id ? 'Atualizar' : 'Salvar'}
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
-      <h2>Produtos</h2>
-        <Table
+      {category?.produtos && <h2>Produtos</h2>}
+        {category?.produtos && <Table
           columns={columns}
-          dataSource={products}
+          dataSource={category?.produtos}
           rowKey="id"
           pagination={false}
-        />
-    </div>
+        />}
+    </Card>
   );
 };
 
