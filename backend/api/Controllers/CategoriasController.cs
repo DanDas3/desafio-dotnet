@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using api.Data;
+using api.DTO;
 using api.Model;
+using AutoMapper;
 
 namespace api.Controllers
 {
@@ -15,10 +17,12 @@ namespace api.Controllers
     public class CategoriasController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper;
 
-        public CategoriasController(ApplicationDbContext context)
+        public CategoriasController(ApplicationDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         [HttpGet]
@@ -36,7 +40,7 @@ namespace api.Controllers
             }
 
             var categoria = await _context.Categorias
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .Include(c => c.Produtos).FirstOrDefaultAsync(m => m.Id == id);
             if (categoria == null)
             {
                 return NotFound();
@@ -46,12 +50,13 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        
-        public async Task<IActionResult> Create([Bind("Id,Nome")] Categoria categoria)
+
+        public async Task<IActionResult> Create([Bind("Id,Nome")] CategoriaDTO categoria)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(categoria);
+                var categoriaEntity = _mapper.Map<Categoria>(categoria);
+                _context.Add(categoriaEntity);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(List));
             }
@@ -59,38 +64,40 @@ namespace api.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Edit(int id, [FromBody] Categoria categoria)
+        public async Task<IActionResult> Edit(int id, [FromBody] CategoriaDTO categoria)
         {
-            if (id != categoria.Id)
-            {
-                return NotFound();
-            }
-
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(categoria);
+                    var categoriaExistente = await _context.Categorias.FindAsync(id);
+
+                    if (categoriaExistente == null)
+                    {
+                        return NotFound();
+                    }
+                    _mapper.Map(categoria, categoriaExistente);
+
+                    _context.Update(categoriaExistente);
                     await _context.SaveChangesAsync();
+                    return Ok(categoriaExistente);
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (Exception)
                 {
-                    if (!CategoriaExists(categoria.Id))
+                    if (!CategoriaExists(id))
                     {
                         return NotFound();
                     }
                     else
                     {
-                        throw;
+                        return (BadRequest());
                     }
                 }
-                return RedirectToAction(nameof(List));
             }
             else
             {
                 return BadRequest(ModelState);
             }
-            return Ok(categoria);
         }
 
         [HttpDelete("{id}")]
