@@ -1,48 +1,27 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { Form, Input, Button, Table, Checkbox } from 'antd';
-import { useGetProductByIdQuery, useUpdateProductMutation } from '../../redux/produtos';
+import { useEffect } from 'react';
+import { Form, Input, Button, Card, Space, Select, message } from 'antd';
+import { useCreateProductMutation, useGetProductByIdQuery, useUpdateProductMutation } from '../../redux/produtos';
 import { ProdutoDTO } from '../../dto/produtoDTO';
 import { useGetCategoriesQuery } from '../../redux/categorias';
 import '../../style.css';
+import { RoutesPath } from '../../utils/constants';
+import { CategoriaDTO } from '../../dto/categoriaDTO';
 
 const EditarProdutoPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { data: product, isLoading: isLoadingProduct } = useGetProductByIdQuery(Number(id));
+  const { data: product, refetch } = useGetProductByIdQuery(Number(id),{skip:!id});
   const { data: categories } = useGetCategoriesQuery({});
   const [updateProduct] = useUpdateProductMutation();
+  const [createProduct] = useCreateProductMutation();
   const [form] = Form.useForm();
-  const [categoryIdState, setCategoryIdState] = useState<number>(0);
   const navigate = useNavigate();
 
-  const columns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-    },
-    {
-      title: 'Nome',
-      dataIndex: 'nome',
-      key: 'nome',
-    },
-    {
-      title: 'Selecionar',
-      key: 'select',
-      render: (record: ProdutoDTO) => (
-        <Checkbox
-          checked={categoryIdState === record.id}
-          onChange={(e) => handleCheckboxChange(record.id??0, e.target.checked)}
-        />
-      ),
-    },
-  ];
-
-  const handleCheckboxChange = (categoriaId: number, checked: boolean) => {
-    if(checked) {
-      setCategoryIdState(categoriaId);
+  useEffect(() => {
+    if(id) {
+      refetch()
     }
-  };
+  },[id, refetch])
 
   useEffect(() => {
     if (product) {
@@ -50,37 +29,59 @@ const EditarProdutoPage = () => {
     }
   }, [product, form]);
 
-  const handleFinish = async (values: any) => {
-    console.log(values);
-    
-    await updateProduct({ id: Number(id), categoriaId: categoryIdState, ...values });
-    navigate('/produtos');
+  const handleFinish = async (values: ProdutoDTO) => {
+    try {
+      if(id) {
+        const response = await updateProduct({ id: Number(id), ...values });
+        if(response.error) {
+          throw response.error;
+        }
+        message.success('Atualizado com sucesso!');
+      } else {
+        const response = await createProduct(values);
+        if(response.error) {
+          throw response.error;
+        }
+        message.success('Cadastrado com sucesso!');
+      }
+      navigate('/produtos');
+    } catch (error) {
+      message.error('Ocorreu um erro!');
+      console.error(error);
+    }
   };
 
-  if (isLoadingProduct) return <div>Carregando...</div>;
+  // if (isLoadingProduct) return <div>Carregando...</div>;
 
   return (
-    <div>
-      <h2><Button className='botao-voltar'>{"<"}</Button>Editar Produto</h2>
+    <Card title="Editar Produto" style={{width:"100%"}}>
       <Form form={form}
-        onFinish={handleFinish}>
+        onFinish={handleFinish}
+        layout='horizontal'
+        labelCol={{span:4}}
+        wrapperCol={{span:10}}
+        >
         <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit">
-            Salvar
-          </Button>
+        <Form.Item name="preco" label="Preço" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="categoriaId" label="Categoria" rules={[{required: true}]}>
+          <Select>
+            {categories.map((category:CategoriaDTO) => (<Select.Option key={category.id} value={category.id}>{category.nome}</Select.Option>))}
+          </Select>
+        </Form.Item>
+        <Form.Item style={{display:'flex', justifyContent:'end'}} >
+          <Space size="middle">
+            <Button type='default' onClick={() => navigate(RoutesPath.PRODUTOS)}>Voltar</Button>
+            <Button type="primary" htmlType="submit">
+              Salvar
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
-      <h2>Categorias</h2>
-        <Table
-          columns={columns}
-          dataSource={categories}
-          rowKey="id"
-          pagination={false}
-        />
-    </div>
+    </Card>
   );
 };
 
