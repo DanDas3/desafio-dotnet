@@ -17,8 +17,8 @@ namespace api.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Produto>()
-                .HasOne(p => p.Categoria) 
-                .WithMany(c => c.Produtos) 
+                .HasOne(p => p.Categoria)
+                .WithMany(c => c.Produtos)
                 .HasForeignKey(p => p.CategoriaId);
 
             modelBuilder.Entity<Categoria>().HasData(
