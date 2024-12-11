@@ -15,6 +15,12 @@ O frontend estará disponível na url:
 
 [http://localhost:3000/produtos](http://localhost:3000)
 
+usuario padrão
+
+login: desafio
+
+senha: desafio123
+
 ## Execução o backend
 
 no terminal:
