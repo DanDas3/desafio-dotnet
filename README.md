@@ -13,7 +13,7 @@ docker-compose up --build
 
 O frontend estará disponível na url:
 
-[http://localhost:3000/produtos](http://localhost:3000)
+[http://localhost:3000](http://localhost:3000)
 
 usuario padrão
 
